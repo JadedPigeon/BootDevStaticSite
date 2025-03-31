@@ -19,12 +19,6 @@ def block_to_block_type(block):
             if not line.startswith(">"):
                 return BlockType.PARAGRAPH
         return BlockType.QUOTE
-    elif block.startswith("- "):
-        lines = block.split("\n")
-        for line in lines:
-            if not line.startswith("- "):
-                return BlockType.PARAGRAPH
-        return BlockType.UNORDERED_LIST
     elif block.startswith("1. "):
         lines = block.split("\n")
         current_line = 1
@@ -34,6 +28,13 @@ def block_to_block_type(block):
             else:
                 return BlockType.PARAGRAPH
         return BlockType.ORDERED_LIST
+    elif block.startswith(("- ", "* ", "+ ")):  # Now checked after ORDERED_LIST
+        lines = block.split("\n")
+        for line in lines:
+            line = line.strip()
+            if line and not (line.startswith("- ") or line.startswith("* ") or line.startswith("+ ")):
+                return BlockType.PARAGRAPH
+        return BlockType.UNORDERED_LIST
     else:
         return BlockType.PARAGRAPH
     

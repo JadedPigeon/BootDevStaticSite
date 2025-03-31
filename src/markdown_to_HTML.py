@@ -19,31 +19,37 @@ def markdown_to_html_node(markdown):
 
         #-----HEADERS-----
         elif block_type == BlockType.HEADING:
-            #check what header it is
-            header_number = 0
-            for char in block:
-                if char == "#":
-                    header_number += 1
-                else:
-                    break
-            #get the text after the header
-            header_text = block[header_number:].strip()
+            lines = block.split("\n")
+            for line in lines:
+                if not line.strip():
+                    continue  # Skip empty lines
+                header_number = 0
+                for char in line:
+                    if char == "#":
+                        header_number += 1
+                    else:
+                        break
+                header_content = line[header_number:].strip()
 
-            text_nodes = text_to_textnodes(header_text)
-            html_nodes = [text_node_to_html_node(node) for node in text_nodes]
-
-            heading_node = ParentNode(f"h{header_number}", html_nodes)
-            children.append(heading_node)
+                text_nodes = text_to_textnodes(header_content)
+                html_nodes = [text_node_to_html_node(node) for node in text_nodes]
+                heading_node = ParentNode(f"h{header_number}", html_nodes)
+                children.append(heading_node)
 
         #-----CODE-----
         elif block_type == BlockType.CODE:
-            #get the content
-            code_text = "\n".join(block.split("\n")[1:-1])
-
-            #created a text node. Note we're not parsing it further. IE checking for bold
-            text_node = TextNode(code_text, TextType.TEXT)
+            # Since we already know this is a code block, we can directly remove the backticks
+            # and clean up any whitespace
+            code_content = block.replace("```", "").strip()
+            
+            # Ensure trailing newline for consistency with tests
+            if not code_content.endswith("\n"):
+                code_content += "\n"
+            
+            # Create nodes
+            text_node = TextNode(code_content, TextType.TEXT)
             html_node = text_node_to_html_node(text_node)
-
+            
             code_node = ParentNode("code", [html_node])
             pre_node = ParentNode("pre", [code_node])
             children.append(pre_node)
@@ -55,7 +61,7 @@ def markdown_to_html_node(markdown):
             for line in lines:
                 quote_lines.append(line.replace(">", "", 1).strip())
                 
-            quote = "\n".join(quote_lines)
+            quote = " ".join(quote_lines)
             text_nodes = text_to_textnodes(quote)
             html_nodes = [text_node_to_html_node(node) for node in text_nodes]
             quote_node = ParentNode("blockquote", html_nodes)
@@ -63,17 +69,41 @@ def markdown_to_html_node(markdown):
 
         #-----UNORDERED LIST-----
         elif block_type == BlockType.UNORDERED_LIST:
-            list_item = block.split("\n")
+            list_items = block.split("\n")
             ulist_nodes = []
-            for item in list_item:
-                if item.strip():
-                    li_content = item.replace("-", "", 1).strip()
-                    li_text_nodes = text_to_textnodes(li_content)
-                    li_html_nodes = [text_node_to_html_node(node) for node in li_text_nodes]
-                    li_node = ParentNode("li", li_html_nodes)
-                    ulist_nodes.append(li_node)
-            lu_node = ParentNode("ul", ulist_nodes)
-            children.append(lu_node)
+            
+            for item in list_items:
+                item = item.strip()
+                if not item:  # Skip empty lines
+                    continue
+                    
+                # Check for all three list markers
+                if item.startswith("- "):
+                    li_content = item[2:]
+                elif item.startswith("* "):
+                    li_content = item[2:]
+                elif item.startswith("+ "):
+                    li_content = item[2:]
+                elif item.startswith("-"):
+                    li_content = item[1:]
+                elif item.startswith("*"):
+                    li_content = item[1:]
+                elif item.startswith("+"):
+                    li_content = item[1:]
+                else:
+                    continue  # Not a list item
+                    
+                # Process the list item content
+                li_text_nodes = text_to_textnodes(li_content)
+                li_html_nodes = [text_node_to_html_node(node) for node in li_text_nodes]
+                li_node = ParentNode("li", li_html_nodes)
+                ulist_nodes.append(li_node)
+            
+            # Only create a list if we found items
+            if ulist_nodes:
+                ul_node = ParentNode("ul", ulist_nodes)
+                children.append(ul_node)
+
         
         #------Ordered List-----
         elif block_type == BlockType.ORDERED_LIST:
